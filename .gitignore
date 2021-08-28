@@ -2,6 +2,7 @@
 reference/
 db_dump_archive/
 data/
+sql/
 parameters/stocko_sc.csv
 hidden.py
 
