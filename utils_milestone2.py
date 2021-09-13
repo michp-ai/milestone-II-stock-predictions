@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import BayesianRidge, LinearRegression, ElasticNet, Ridge, Lasso
+from sklearn.linear_model import BayesianRidge, LinearRegression, ElasticNet, Ridge, Lasso, LogisticRegression
 from sklearn import tree
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.ensemble import GradientBoostingRegressor
@@ -78,3 +78,36 @@ def pca_train_test(X_train, X_test, num_components=200, random_state=2021):
     print("Total Explained", sum(pca.explained_variance_ratio_))
     
     return X_train_pca, X_test_pca
+
+def run_model(current_selection, X_tr, X_te, y_train, y_test, model_type="regression"):
+    np.random.seed(0)
+    if model_type=="regression":
+        #model = RandomForestRegressor(max_depth=3, random_state=6, criterion="mse", n_jobs=-1) #, min_impurity_decrease=0.01) # 
+        model = LinearRegression()
+        model.fit(X_tr[current_selection], y_train)
+        # make the predictions
+        y_pred_fundamental_train = model.predict(X_tr[current_selection])
+        y_pred_fundamental_test = model.predict(X_te[current_selection])
+        # convert to classification
+        y_pred_clf_fundamental_train = pred_to_clf_pred(y_pred_fundamental_train, threshold=1)
+        y_pred_clf_fundamental_test = pred_to_clf_pred(y_pred_fundamental_test, threshold=1)
+        train_scores = full_and_threshold_scoring(y_train,y_pred_fundamental_train,95)
+        test_scores = full_and_threshold_scoring(y_test,y_pred_fundamental_test,95)
+        #print(c, test_scores['threshold_return'] )
+    elif model_type=="classification":
+        model = LogisticRegression()
+        y_train_clf = pred_to_clf_pred(y_train, threshold=1)
+        y_test_clf = pred_to_clf_pred(y_test, threshold=1)
+        model.fit(X_train_numeric_plus_pca[current_selection], y_train_clf)
+        # make the predictions
+        y_pred_fundamental_train = model.predict_proba(X_train_numeric_plus_pca[current_selection])[:,1]
+        y_pred_fundamental_test = model.predict_proba(X_test_numeric_plus_pca[current_selection])[:,1]
+        # convert to classification
+        y_pred_clf_fundamental_train = pred_to_clf_pred(y_pred_fundamental_train, threshold=0.5)
+        y_pred_clf_fundamental_test = pred_to_clf_pred(y_pred_fundamental_test, threshold=0.5)
+        #print(y_pred_fundamental_train.shape)
+        #print(y_train.shape)
+        train_scores = full_and_threshold_scoring(y_train_clf,y_pred_clf_fundamental_train,95)
+        test_scores = full_and_threshold_scoring(y_test_clf,y_pred_clf_fundamental_test,95)
+
+    return train_scores, test_scores
