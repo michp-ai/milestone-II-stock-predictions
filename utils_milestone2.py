@@ -51,6 +51,13 @@ def get_numeric_non_infinite_cols(df):
     
     return df, cols
 
+def feature_engineering(df):
+    df['Volume_over_Volume_MA50'] = df['Volume'] / df['Volume_MA50']
+    df['Volume_over_Volume_MA200'] = df['Volume'] / df['Volume_MA200']
+    df['Volume_MA50_over_Volume_MA200'] = df['Volume_MA50'] / df['Volume_MA200']
+    
+    return df
+
 def add_pca_cols(df, pca_array):
     df_with_pca = copy.deepcopy(df)
     for m in range(pca_array.shape[1]):
