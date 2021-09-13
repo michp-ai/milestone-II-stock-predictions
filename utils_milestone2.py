@@ -58,6 +58,25 @@ def feature_engineering(df):
     
     return df
 
+def threshold_precision(y, pred, percentile):
+    threshold = np.percentile(pred, percentile)
+    pred_clf = (pred > threshold) * 1
+    threshold_precision = precision_score(y, pred_clf)
+    
+    return round(threshold_precision,5)
+
+def full_and_threshold_scoring(y, y_pred, percentile):
+    threshold = np.percentile(y_pred, percentile)
+    results = {}
+    y_clf = pred_to_clf_pred(y, threshold=1)
+    y_pred_clf = pred_to_clf_pred(y_pred, threshold=1)
+    results['default_precision'] = round(precision_score(y_clf, y_pred_clf),5)
+    results['default_return'] = round(np.mean(y[y_pred>1])-1,5)
+    results['threshold_precision'] = threshold_precision(y_clf, y_pred, percentile)
+    results['threshold_return'] = round(np.mean(y[y_pred>threshold])-1,5)
+    
+    return results
+
 def add_pca_cols(df, pca_array):
     df_with_pca = copy.deepcopy(df)
     for m in range(pca_array.shape[1]):
