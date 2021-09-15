@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from sklearn.linear_model import BayesianRidge, LinearRegression, ElasticNet, Ridge, Lasso, LogisticRegression
 from sklearn import tree
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.metrics import mean_absolute_error
@@ -11,6 +11,32 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 import copy
 
+
+def sector_mappings(df):
+    # utility to clean the sector mappings in the data scraped from pdf's which were incorrect in about 1% of cases 
+    # but can be corrected with these mappings
+    df_sectors = pd.read_csv("data\\sector_mappings.csv")
+    mdict = df_sectors.set_index('Ticker')['Sector'].to_dict()
+    df['Sector'] = df['ticker']
+    df['Sector'].replace(mdict, inplace=True)
+    
+    return df
+
+def load_data(return_y_val=False):
+    X_train = pd.read_pickle("data\\milestone_data_X_train.pkl")
+    X_train = sector_mappings(X_train)
+    y_train = pd.read_pickle("data\\milestone_data_y_train.pkl")
+    X_test = pd.read_pickle("data\\milestone_data_X_test.pkl")
+    X_test = sector_mappings(X_test)
+    y_test = pd.read_pickle("data\\milestone_data_y_test.pkl")
+    # validation data - we won't use this until the end
+    X_val = pd.read_pickle("data\\milestone_data_X_val.pkl")
+    X_val = sector_mappings(X_val)
+    if return_y_val:
+        y_val = pd.read_pickle("data\\milestone_data_y_val.pkl")
+        return X_train, y_train, X_test, y_test, X_val, y_val
+    else:
+        return X_train, y_train, X_test, y_test, X_val
 
 def pred_to_clf_pred(pred, threshold=1):
     pred_clf = (pred > threshold) * 1 # multiply by 1 to change to binary from True / False
@@ -55,6 +81,7 @@ def feature_engineering(df):
     df['Volume_over_Volume_MA50'] = df['Volume'] / df['Volume_MA50']
     df['Volume_over_Volume_MA200'] = df['Volume'] / df['Volume_MA200']
     df['Volume_MA50_over_Volume_MA200'] = df['Volume_MA50'] / df['Volume_MA200']
+    
     
     return df
 
@@ -128,7 +155,8 @@ def run_model(current_selection, X_tr, X_te, y_train, y_test, model_type="regres
     elif model_type=="classification":
         train_scores = {}
         test_scores = {}
-        model = LogisticRegression(n_jobs=-1)
+        #model = LogisticRegression(n_jobs=-1)
+        model = RandomForestClassifier(max_depth=4, random_state=6, n_jobs=-1)
         y_train_clf = pred_to_clf_pred(y_train, threshold=1)
         y_test_clf = pred_to_clf_pred(y_test, threshold=1)
         model.fit(X_tr[current_selection], y_train_clf)
