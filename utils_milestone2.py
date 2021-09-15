@@ -22,9 +22,9 @@ def sector_mappings(df):
     
     return df
 
-def load_data(return_y_val=False):
+def load_data(return_y_val=False, ohe_sector=True):
     X_train = pd.read_pickle("data\\milestone_data_X_train.pkl")
-    X_train = sector_mappings(X_train)
+    X_train = sector_mappings(X_train)    
     y_train = pd.read_pickle("data\\milestone_data_y_train.pkl")
     X_test = pd.read_pickle("data\\milestone_data_X_test.pkl")
     X_test = sector_mappings(X_test)
@@ -32,6 +32,12 @@ def load_data(return_y_val=False):
     # validation data - we won't use this until the end
     X_val = pd.read_pickle("data\\milestone_data_X_val.pkl")
     X_val = sector_mappings(X_val)
+    
+    if ohe_sector:
+        X_train = pd.concat([X_train,pd.get_dummies(X_train[['Sector']])],axis=1)
+        X_test = pd.concat([X_test,pd.get_dummies(X_test[['Sector']])],axis=1)
+        X_val = pd.concat([X_val,pd.get_dummies(X_val[['Sector']])],axis=1)
+    
     if return_y_val:
         y_val = pd.read_pickle("data\\milestone_data_y_val.pkl")
         return X_train, y_train, X_test, y_test, X_val, y_val
