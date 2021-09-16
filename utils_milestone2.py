@@ -54,17 +54,17 @@ def threshold_precision(y, pred, percentile):
     pred_clf = (pred > threshold) * 1
     threshold_precision = precision_score(y, pred_clf)
     
-    return round(threshold_precision,5)
+    return round(threshold_precision,4)
 
 def full_and_threshold_scoring(y, y_pred, percentile):
     threshold = np.percentile(y_pred, percentile)
     results = {}
     y_clf = pred_to_clf_pred(y, threshold=1)
     y_pred_clf = pred_to_clf_pred(y_pred, threshold=1)
-    results['default_precision'] = round(precision_score(y_clf, y_pred_clf),5)
-    results['default_return'] = round(np.mean(y[y_pred>1])-1,5)
+    results['default_precision'] = round(precision_score(y_clf, y_pred_clf),4)
+    results['default_return'] = round(np.mean(y[y_pred>1])-1,4)
     results['threshold_precision'] = threshold_precision(y_clf, y_pred, percentile)
-    results['threshold_return'] = round(np.mean(y[y_pred>threshold])-1,5)
+    results['threshold_return'] = round(np.mean(y[y_pred>threshold])-1,4)
     
     return results
 
@@ -96,17 +96,17 @@ def threshold_precision(y, pred, percentile):
     pred_clf = (pred > threshold) * 1
     threshold_precision = precision_score(y, pred_clf)
     
-    return round(threshold_precision,5)
+    return round(threshold_precision,4)
 
 def full_and_threshold_scoring(y, y_pred, percentile):
     threshold = np.percentile(y_pred, percentile)
     results = {}
     y_clf = pred_to_clf_pred(y, threshold=1)
     y_pred_clf = pred_to_clf_pred(y_pred, threshold=1)
-    results['default_precision'] = round(precision_score(y_clf, y_pred_clf),5)
-    results['default_return'] = round(np.mean(y[y_pred>1])-1,5)
+    results['default_precision'] = round(precision_score(y_clf, y_pred_clf),4)
+    results['default_return'] = round(np.mean(y[y_pred>1])-1,4)
     results['threshold_precision'] = threshold_precision(y_clf, y_pred, percentile)
-    results['threshold_return'] = round(np.mean(y[y_pred>threshold])-1,5)
+    results['threshold_return'] = round(np.mean(y[y_pred>threshold])-1,4)
     
     return results
 
@@ -114,6 +114,49 @@ def pred_to_clf_pred(pred, threshold=1):
     pred_clf = (pred > threshold) * 1 # multiply by 1 to change to binary from True / False
     
     return pred_clf
+
+def generate_benchmark_scores(y_train, y_test, y_train_clf, y_all_up_train, y_test_clf, y_all_up_test):
+    benchmark_scores = {}
+    benchmark_scores['train_precision'] = round(precision_score(y_train_clf, y_all_up_train),4)
+    benchmark_scores['test_precision'] = round(precision_score(y_test_clf, y_all_up_test),4)
+    benchmark_scores['train_return'] = round(np.mean(y_train) - 1,4)
+    benchmark_scores['test_return'] = round(np.mean(y_test) - 1,4)
+    
+    return benchmark_scores
+
+def return_results(benchmark_scores, train_scores, test_scores):
+    train_precision = {}
+    train_precision['dataset'] = "train"
+    train_precision['metric'] = "precision"
+    train_precision['benchmark'] = benchmark_scores['train_precision']
+    train_precision['default'] = train_scores['default_precision']
+    train_precision['threshold'] = train_scores['threshold_precision']
+    test_precision = {}
+    test_precision['dataset'] = "test"
+    test_precision['metric'] = "precision"
+    test_precision['benchmark'] = benchmark_scores['test_precision']
+    test_precision['default'] = test_scores['default_precision']
+    test_precision['threshold'] = test_scores['threshold_precision']
+    train_return = {}
+    train_return['dataset'] = "train"
+    train_return['metric'] = "return"
+    train_return['benchmark'] = "{:.2%}".format(benchmark_scores['train_return'])
+    train_return['default'] = "{:.2%}".format(train_scores['default_return'])
+    train_return['threshold'] = "{:.2%}".format(train_scores['threshold_return'])
+    test_return = {}
+    test_return['dataset'] = "test"
+    test_return['metric'] = "return"
+    test_return['benchmark'] = "{:.2%}".format(benchmark_scores['test_return'])
+    test_return['default'] = "{:.2%}".format(test_scores['default_return'])
+    test_return['threshold'] = "{:.2%}".format(test_scores['threshold_return'])
+    results = pd.DataFrame.from_dict(train_precision, orient='index').T
+    results = results.append(pd.DataFrame.from_dict(test_precision, orient='index').T)
+    results = results.append(pd.DataFrame.from_dict(train_return, orient='index').T)
+    results = results.append(pd.DataFrame.from_dict(test_return, orient='index').T)
+    results.reset_index(inplace=True)
+    results = results.drop(['index'], axis=1)
+    
+    return results
 
 def add_pca_cols(df, pca_array):
     df_with_pca = copy.deepcopy(df)
@@ -174,17 +217,17 @@ def run_model(current_selection, X_tr, X_te, y_train, y_test, model_type="regres
         y_pred_clf_fundamental_test = model.predict(X_te[current_selection])
         
         # calculate the return scores
-        train_scores['default_precision'] = round(precision_score(y_train_clf, y_pred_clf_fundamental_train),5)
-        test_scores['default_precision'] = round(precision_score(y_test_clf, y_pred_clf_fundamental_test),5)
-        train_scores['default_return'] = round(np.mean(y_train[y_pred_fundamental_train>0.5])-1,5)
-        test_scores['default_return'] = round(np.mean(y_test[y_pred_fundamental_test>0.5])-1,5)
+        train_scores['default_precision'] = round(precision_score(y_train_clf, y_pred_clf_fundamental_train),4)
+        test_scores['default_precision'] = round(precision_score(y_test_clf, y_pred_clf_fundamental_test),4)
+        train_scores['default_return'] = round(np.mean(y_train[y_pred_fundamental_train>0.5])-1,4)
+        test_scores['default_return'] = round(np.mean(y_test[y_pred_fundamental_test>0.5])-1,4)
         train_scores['threshold_precision'] = threshold_precision(y_train_clf, y_pred_fundamental_train, percentile)
         test_scores['threshold_precision'] = threshold_precision(y_test_clf, y_pred_fundamental_test, percentile)
         
         # calculate the threshold for the top 5% then calculate the threshold return. Then return the return along with the other scores!
         threshold = np.percentile(y_pred_fundamental_train, percentile)        
-        train_scores['threshold_return'] = round(np.mean(y_train[y_pred_fundamental_train>threshold])-1,5)
+        train_scores['threshold_return'] = round(np.mean(y_train[y_pred_fundamental_train>threshold])-1,4)
         threshold = np.percentile(y_pred_fundamental_test, percentile)        
-        test_scores['threshold_return'] = round(np.mean(y_test[y_pred_fundamental_test>threshold])-1,5)
+        test_scores['threshold_return'] = round(np.mean(y_test[y_pred_fundamental_test>threshold])-1,4)
         
     return train_scores, test_scores, model
