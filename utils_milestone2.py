@@ -146,8 +146,8 @@ def pca_train_test(X_train, X_test, num_components=200, random_state=2021):
 def run_model(current_selection, X_tr, X_te, y_train, y_test, model_type="regression", percentile=95):
     np.random.seed(0)
     if model_type=="regression":
-        #model = RandomForestRegressor(max_depth=3, random_state=6, criterion="mse", n_jobs=-1) #, min_impurity_decrease=0.01) # 
-        model = LinearRegression()
+        model = RandomForestRegressor(max_depth=3, random_state=6, criterion="mse", n_jobs=-1) #, min_impurity_decrease=0.01) # 
+        #model = LinearRegression()
         model.fit(X_tr[current_selection], y_train)
         # make the predictions
         y_pred_fundamental_train = model.predict(X_tr[current_selection])
@@ -187,4 +187,4 @@ def run_model(current_selection, X_tr, X_te, y_train, y_test, model_type="regres
         threshold = np.percentile(y_pred_fundamental_test, percentile)        
         test_scores['threshold_return'] = round(np.mean(y_test[y_pred_fundamental_test>threshold])-1,5)
         
-    return train_scores, test_scores
+    return train_scores, test_scores, model
