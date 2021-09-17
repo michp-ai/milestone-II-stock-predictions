@@ -182,11 +182,9 @@ def pca_train_test(X_train, X_test, num_components=200, random_state=2021):
     
     return X_train_pca, X_test_pca
 
-def run_model(current_selection, X_tr, X_te, y_train, y_test, model_type="regression", percentile=95):
+def run_model(model, current_selection, X_tr, X_te, y_train, y_test, model_type="regression", percentile=95):
     np.random.seed(0)
     if model_type=="regression":
-        model = RandomForestRegressor(max_depth=3, random_state=6, criterion="mse", n_jobs=-1) #, min_impurity_decrease=0.01) # 
-        #model = LinearRegression()
         model.fit(X_tr[current_selection], y_train)
         # make the predictions
         y_pred_fundamental_train = model.predict(X_tr[current_selection])
@@ -196,8 +194,6 @@ def run_model(current_selection, X_tr, X_te, y_train, y_test, model_type="regres
     elif model_type=="classification":
         train_scores = {}
         test_scores = {}
-        #model = LogisticRegression(n_jobs=-1)
-        model = RandomForestClassifier(max_depth=4, random_state=6, n_jobs=-1)
         y_train_clf = pred_to_clf_pred(y_train, threshold=1)
         y_test_clf = pred_to_clf_pred(y_test, threshold=1)
         model.fit(X_tr[current_selection], y_train_clf)
