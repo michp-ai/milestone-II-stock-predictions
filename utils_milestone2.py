@@ -39,37 +39,30 @@ def load_data(return_y_val=False, ohe_sector=True):
     path = os.path.join('data', "milestone_data_X_val.pkl")
     X_val = pd.read_pickle(path)
     X_val = sector_mappings(X_val)
+    # final validation data - we won't use this until the very end
+    path = os.path.join('data', "milestone_data_X_val_final.pkl")
+    X_val_final = pd.read_pickle(path)
+    X_val_final = sector_mappings(X_val_final)
     
     if ohe_sector:
         X_train = pd.concat([X_train,pd.get_dummies(X_train[['Sector']])],axis=1)
         X_test = pd.concat([X_test,pd.get_dummies(X_test[['Sector']])],axis=1)
         X_val = pd.concat([X_val,pd.get_dummies(X_val[['Sector']])],axis=1)
+        X_val_final = pd.concat([X_val_final,pd.get_dummies(X_val_final[['Sector']])],axis=1)
     
     if return_y_val:
         path = os.path.join('data', "milestone_data_y_val.pkl")
         y_val = pd.read_pickle(path)
-        return X_train, y_train, X_test, y_test, X_val, y_val
+        path = os.path.join('data', "milestone_data_y_val_final.pkl")
+        y_val_final = pd.read_pickle(path)
+        return X_train, y_train, X_test, y_test, X_val, y_val, X_val_final, y_val_final
     else:
-        return X_train, y_train, X_test, y_test, X_val
+        return X_train, y_train, X_test, y_test, X_val, X_val_final
 
 def pred_to_clf_pred(pred, threshold=1):
     pred_clf = (pred > threshold) * 1 # multiply by 1 to change to binary from True / False
     
     return pred_clf
-
-def threshold_precision(y, pred, percentile):
-    threshold = np.percentile(pred, percentile)
-    pred_clf = (pred > threshold) * 1
-    threshold_precision = precision_score(y, pred_clf)
-    
-    return round(threshold_precision,4)
-
-def feature_engineering(df):
-    df['Volume_over_Volume_MA50'] = df['Volume'] / df['Volume_MA50']
-    df['Volume_over_Volume_MA200'] = df['Volume'] / df['Volume_MA200']
-    df['Volume_MA50_over_Volume_MA200'] = df['Volume_MA50'] / df['Volume_MA200']
-    
-    return df
 
 def get_numeric_non_infinite_cols(df):
     df = df._get_numeric_data()
@@ -83,7 +76,6 @@ def feature_engineering(df):
     df['Volume_over_Volume_MA50'] = df['Volume'] / df['Volume_MA50']
     df['Volume_over_Volume_MA200'] = df['Volume'] / df['Volume_MA200']
     df['Volume_MA50_over_Volume_MA200'] = df['Volume_MA50'] / df['Volume_MA200']
-    
     
     return df
 
@@ -120,7 +112,7 @@ def generate_benchmark_scores(y_train, y_test, y_train_clf, y_all_up_train, y_te
     
     return benchmark_scores
 
-def return_results(benchmark_scores, train_scores, test_scores):
+def return_results(benchmark_scores, train_scores, test_scores, dataset):
     train_precision = {}
     train_precision['dataset'] = "train"
     train_precision['metric'] = "precision"
@@ -128,7 +120,7 @@ def return_results(benchmark_scores, train_scores, test_scores):
     train_precision['default'] = "{:.3f}".format(train_scores['default_precision'])
     train_precision['threshold'] = "{:.3f}".format(train_scores['threshold_precision'])
     test_precision = {}
-    test_precision['dataset'] = "test"
+    test_precision['dataset'] = dataset
     test_precision['metric'] = "precision"
     test_precision['benchmark'] = "{:.3f}".format(benchmark_scores['test_precision'])
     test_precision['default'] = "{:.3f}".format(test_scores['default_precision'])
@@ -140,7 +132,7 @@ def return_results(benchmark_scores, train_scores, test_scores):
     train_return['default'] = "{:.2%}".format(train_scores['default_return'])
     train_return['threshold'] = "{:.2%}".format(train_scores['threshold_return'])
     test_return = {}
-    test_return['dataset'] = "test"
+    test_return['dataset'] = dataset
     test_return['metric'] = "return"
     test_return['benchmark'] = "{:.2%}".format(benchmark_scores['test_return'])
     test_return['default'] = "{:.2%}".format(test_scores['default_return'])
@@ -161,26 +153,30 @@ def add_pca_cols(df, pca_array):
         
     return df_with_pca
 
-def scale_train_test(X_tr, X_te):
+def scale_train_test(X_tr, X_te, X_va, X_va_fi):
     scaler = StandardScaler()
     # fit on the train data only
     scaler.fit(X_tr)
     # transform train and test
     X_train_scaled = scaler.transform(X_tr)
     X_test_scaled = scaler.transform(X_te)
+    X_val_scaled = scaler.transform(X_va)
+    X_val_final_scaled = scaler.transform(X_va_fi)
     
-    return X_train_scaled, X_test_scaled
+    return X_train_scaled, X_test_scaled, X_val_scaled, X_val_final_scaled
 
-def pca_train_test(X_train, X_test, num_components=200, random_state=2021):
+def pca_train_test(X_train, X_test, X_val, X_val_final, num_components=200, random_state=2021):
     pca = PCA(n_components=num_components, random_state=random_state)
     # fit on scaled train data
     pca.fit(X_train)
     # transform scaled train and scaled test
     X_train_pca = pca.transform(X_train)
     X_test_pca = pca.transform(X_test)
+    X_val_pca = pca.transform(X_val)
+    X_val_final_pca = pca.transform(X_val_final)
     print("Total Explained", sum(pca.explained_variance_ratio_))
     
-    return X_train_pca, X_test_pca
+    return X_train_pca, X_test_pca, X_val_pca, X_val_final_pca, pca
 
 def run_model(model, current_selection, X_tr, X_te, y_train, y_test, model_type="regression", percentile=95):
     np.random.seed(0)
@@ -219,3 +215,39 @@ def run_model(model, current_selection, X_tr, X_te, y_train, y_test, model_type=
         test_scores['threshold_return'] = round(np.mean(y_test[y_pred_fundamental_test>threshold])-1,4)
         
     return train_scores, test_scores, model
+
+def data_pipeline(return_y_val=False):
+    X_train, y_train, X_test, y_test, X_val, y_val, X_val_final, y_val_final = load_data(return_y_val=return_y_val)
+    # Check there are no nulls
+    is_NaN = X_train.isnull()
+    col_has_NaN = is_NaN.any(axis=0)
+    col_has_NaN = col_has_NaN.loc[col_has_NaN==True].index.to_list()
+    col_has_NaN
+    # Identify numeric columns
+    X_train_numeric = X_train._get_numeric_data()
+    # Drop columns that contain infinity or negative infinity
+    col_has_inf = X_train_numeric.columns.to_series()[np.isinf(X_train_numeric).any()].to_list()
+    X_train_numeric = X_train_numeric.drop(col_has_inf, axis=1)
+    cols = X_train_numeric.columns.to_list()
+    # get numeric cols
+    X_test_numeric = X_test[cols]
+    X_val_numeric = X_val[cols]
+    X_val_final_numeric = X_val_final[cols]
+    # run feature engineering
+    X_train_numeric = feature_engineering(X_train_numeric)
+    X_test_numeric = feature_engineering(X_test_numeric)
+    X_val_numeric = feature_engineering(X_val_numeric)
+    X_val_final_numeric = feature_engineering(X_val_final_numeric)
+    # run scaling
+    X_train_numeric_scaled, X_test_numeric_scaled, X_val_numeric_scaled, X_val_final_numeric_scaled = scale_train_test(X_train_numeric, X_test_numeric, X_val_numeric, X_val_final_numeric)
+    # run pca
+    X_train_pca, X_test_pca, X_val_pca, X_val_final_pca, pca = pca_train_test(X_train_numeric_scaled, X_test_numeric_scaled, X_val_numeric_scaled, 
+                                                                              X_val_final_numeric_scaled, num_components=200, random_state=2021)
+    # add pca columns to original features
+    X_train_numeric_plus_pca = add_pca_cols(X_train_numeric, X_train_pca)
+    X_test_numeric_plus_pca = add_pca_cols(X_test_numeric, X_test_pca)
+    X_val_numeric_plus_pca = add_pca_cols(X_val_numeric, X_val_pca)
+    X_val_final_numeric_plus_pca = add_pca_cols(X_val_final_numeric, X_val_final_pca)
+    
+    return X_train_numeric_plus_pca, X_test_numeric_plus_pca, X_val_numeric_plus_pca, X_val_final_numeric_plus_pca, y_train, y_test, y_val, y_val_final
+    
